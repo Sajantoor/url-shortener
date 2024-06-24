@@ -1,0 +1,18 @@
+syntax = "proto3"; 
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/Sajantoor/url-shortener/common/protobuf";
+
+service UrlShortnerService {
+    rpc CreateShortUrl(CreateShortUrlRequest) returns (CreateShortUrlResponse);
+}
+
+message CreateShortUrlRequest {
+    string long_url = 1;
+}
+
+message CreateShortUrlResponse {
+    string short_url = 1; 
+    google.protobuf.Timestamp created_at = 2; 
+}
+
