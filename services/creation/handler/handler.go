@@ -6,9 +6,9 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"net/url"
-	"time"
 
 	"github.com/Sajantoor/url-shortener/services/common/protobuf"
+	"github.com/Sajantoor/url-shortener/services/common/store"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	codes "google.golang.org/grpc/codes"
@@ -21,6 +21,7 @@ const hashLength = 5
 const randomStrLength = shortUrlLength - hashLength
 
 type CreationHandler struct {
+	Store *store.Store
 	protobuf.UnimplementedUrlShortnerServiceServer
 }
 
@@ -39,9 +40,19 @@ func (s *CreationHandler) CreateShortUrl(ctx context.Context, req *protobuf.Crea
 
 	shortUrl := generateShortUrl(longUrl)
 
+	res, err := s.Store.CreateUrlMapping(longUrl, shortUrl)
+
+	if err != nil {
+		if _, ok := err.(store.UrlAlreadyExistsError); ok {
+			return nil, status.Error(codes.AlreadyExists, "Short URL already exists")
+		}
+
+		return nil, status.Error(codes.Internal, "Failed to create short URL")
+	}
+
 	return &protobuf.CreateShortUrlResponse{
-		ShortUrl:  shortUrl,
-		CreatedAt: timestamppb.New(time.Now()),
+		ShortUrl:  domain + res.ShortURL,
+		CreatedAt: timestamppb.New(res.CreatedAt),
 	}, nil
 }
 
@@ -52,7 +63,7 @@ func generateShortUrl(longUrl string) string {
 
 	// TODO: Check if this exists in the database...
 
-	return domain + shortUrl
+	return shortUrl
 }
 
 func generateHash(str string) string {

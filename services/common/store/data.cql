@@ -8,3 +8,11 @@ CREATE TABLE url_shortener.url_map (
     created_at timestamp, 
     PRIMARY KEY (short_url)
 );
+
+-- Reverse table to get long url from short url
+CREATE TABLE url_shortener.long_to_short (
+    short_url text, 
+    long_url text,
+    PRIMARY KEY (long_url)
+);
+

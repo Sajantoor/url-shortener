@@ -14,6 +14,12 @@ type Store struct {
 	cassandra *db.Cassandra
 }
 
+type UrlAlreadyExistsError struct{}
+
+func (z UrlAlreadyExistsError) Error() string {
+	return "URL already exists"
+}
+
 func New() *Store {
 	log.Println("Connecting to datastore...")
 
@@ -28,8 +34,8 @@ func (s *Store) Close() {
 	s.cassandra.Close()
 }
 
-func (s *Store) GetURLMapping(shortURL string) (*URLMapping, error) {
-	cached, err := s.redis.GetClient().Get(shortURL).Result()
+func (s *Store) GetUrlMapping(shortUrl string) (*URLMapping, error) {
+	cached, err := s.redis.GetClient().Get(shortUrl).Result()
 
 	if err != nil {
 		// return value from cache
@@ -48,7 +54,7 @@ func (s *Store) GetURLMapping(shortURL string) (*URLMapping, error) {
 
 	db := s.cassandra.Client()
 	result := &URLMapping{}
-	query := db.Query("SELECT * FROM url_shortener.url_map WHERE short_url = ?", shortURL)
+	query := db.Query("SELECT * FROM url_shortener.url_map WHERE short_url = ?", shortUrl)
 
 	err = query.Scan(&result.ShortURL, &result.CreatedAt, &result.LongURL)
 
@@ -62,17 +68,33 @@ func (s *Store) GetURLMapping(shortURL string) (*URLMapping, error) {
 		log.Fatal("Failed to marshal value", err)
 	}
 
-	s.redis.GetClient().Set(shortURL, value, 0)
+	s.redis.GetClient().Set(shortUrl, value, 0)
 	return result, nil
 }
 
-func (s *Store) CreateURLMapping(longURL string, shortURL string) (*URLMapping, error) {
+func (s *Store) CreateUrlMapping(longUrl string, shortUrl string) (*URLMapping, error) {
 	db := s.cassandra.Client()
 
 	createdAt := time.Now()
-	query := db.Query("INSERT INTO url_shortener.url_map (short_url, long_url, created_at) VALUES (?, ?, ?) IF NOT EXISTS", shortURL, longURL, createdAt)
+	// Create long to short mapping first to avoid duplicates
+	query := db.Query("INSERT INTO url_shortener.long_to_short (short_url, long_url) VALUES (?, ?) IF NOT EXISTS", shortUrl, longUrl)
 
-	err := query.Exec()
+	applied, err := query.ScanCAS()
+
+	if !applied {
+		log.Println("Long URL already exists: ", longUrl)
+		// TODO: Improve this error...
+		return nil, UrlAlreadyExistsError{}
+	}
+
+	if err != nil {
+		log.Println("Failed to insert into Cassandra: ", err)
+		return nil, err
+	}
+
+	query = db.Query("INSERT INTO url_shortener.url_map (short_url, long_url, created_at) VALUES (?, ?, ?) IF NOT EXISTS", shortUrl, longUrl, createdAt)
+
+	err = query.Exec()
 
 	if err != nil {
 		log.Println("Failed to insert into Cassandra: ", err)
@@ -80,8 +102,8 @@ func (s *Store) CreateURLMapping(longURL string, shortURL string) (*URLMapping, 
 	}
 
 	return &URLMapping{
-		ShortURL:  shortURL,
-		LongURL:   longURL,
+		ShortURL:  shortUrl,
+		LongURL:   longUrl,
 		CreatedAt: createdAt,
 	}, nil
 }
