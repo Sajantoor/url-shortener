@@ -1,4 +1,4 @@
-package store
+package database
 
 import (
 	"log"
@@ -12,6 +12,8 @@ type Cassandra struct {
 }
 
 func New() *Cassandra {
+	log.Println("Connecting to Cassandra...")
+
 	cluster := gocql.NewCluster("127.0.0.1")
 	cluster.ProtoVersion = 4
 	cluster.Consistency = gocql.Quorum
@@ -22,6 +24,8 @@ func New() *Cassandra {
 		log.Fatal("Failed to connect to Cassandra", err)
 	}
 
+	log.Println("Connected to Cassandra")
+
 	return &Cassandra{
 		cluster: cluster,
 		session: session,
@@ -30,6 +34,10 @@ func New() *Cassandra {
 
 func (c *Cassandra) Close() {
 	c.session.Close()
+}
+
+func (c *Cassandra) Client() *gocql.Session {
+	return c.session
 }
 
 func (c *Cassandra) ExecuteQuery(query string, args ...interface{}) error {
