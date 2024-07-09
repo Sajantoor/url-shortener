@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"net/url"
+	"os"
 
 	"github.com/Sajantoor/url-shortener/services/common/protobuf"
 	"github.com/Sajantoor/url-shortener/services/common/store"
@@ -15,7 +16,8 @@ import (
 	status "google.golang.org/grpc/status"
 )
 
-const domain = "http://localhost:8080/"
+var domain = os.Getenv("DOMAIN")
+
 const shortUrlLength = 7
 const hashLength = 5
 const randomStrLength = shortUrlLength - hashLength
