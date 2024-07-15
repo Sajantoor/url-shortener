@@ -2,11 +2,13 @@ package handler
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/url"
-	"os"
 
 	pb "github.com/Sajantoor/url-shortener/services/common/protobuf"
 	"github.com/Sajantoor/url-shortener/services/common/store"
+	"github.com/Sajantoor/url-shortener/services/common/types"
 
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -18,7 +20,7 @@ type RetervialHandler struct {
 	pb.UnimplementedUrlRetrievalServer
 }
 
-var domain = os.Getenv("DOMAIN")
+var domain = "http://localhost:8080"
 var domainHostname string = ""
 
 func (s *RetervialHandler) GetLongUrl(ctx context.Context, req *pb.GetLongUrlRequest) (*pb.GetLongUrlResponse, error) {
@@ -34,26 +36,34 @@ func (s *RetervialHandler) GetLongUrl(ctx context.Context, req *pb.GetLongUrlReq
 
 	shortUrlHostName := shortUrl.Hostname()
 	if shortUrlHostName == "" {
-		return nil, status.Error(codes.InvalidArgument, "Invalid short URL")
+		return nil, status.Error(codes.InvalidArgument, "Invalid short URL: Short URL cannot be empty.")
 	}
 
 	domainHostName := getDomainHostName()
 
 	if shortUrlHostName != domainHostName {
-		return nil, status.Error(codes.InvalidArgument, "Invalid short URL")
+		return nil, status.Error(codes.InvalidArgument, "Invalid short URL: Short URL does not belong to this service.")
 	}
 
 	shortUrlHash := shortUrl.Path
 
 	if shortUrlHash == "" && len(shortUrlHash) <= 1 {
-		return nil, status.Error(codes.InvalidArgument, "Invalid short URL")
+		return nil, status.Error(codes.InvalidArgument, "Invalid short URL: Short URL hash cannot be empty.")
 	}
 
 	shortUrlHash = shortUrlHash[1:]
 
+	fmt.Println(shortUrlHash)
+
 	shortUrlMapping, err := s.Store.GetUrlMapping(shortUrlHash)
 
 	if err != nil {
+		if errors.As(err, &types.ReqError) {
+			// cast to ReqError and return the error message
+			reqErr := err.(*types.RequestError)
+			return nil, status.Error(reqErr.Code, reqErr.Error())
+		}
+
 		return nil, status.Error(codes.NotFound, "Short URL not found")
 	}
 

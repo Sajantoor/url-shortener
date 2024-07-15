@@ -5,11 +5,13 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"errors"
 	"net/url"
 	"os"
 
 	"github.com/Sajantoor/url-shortener/services/common/protobuf"
 	"github.com/Sajantoor/url-shortener/services/common/store"
+	"github.com/Sajantoor/url-shortener/services/common/types"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	codes "google.golang.org/grpc/codes"
@@ -45,8 +47,10 @@ func (s *CreationHandler) CreateShortUrl(ctx context.Context, req *protobuf.Crea
 	res, err := s.Store.CreateUrlMapping(longUrl, shortUrl)
 
 	if err != nil {
-		if _, ok := err.(store.UrlAlreadyExistsError); ok {
-			return nil, status.Error(codes.AlreadyExists, "Short URL already exists")
+		if errors.As(err, &types.ReqError) {
+			// cast to ReqError and return the error message
+			reqErr := err.(*types.RequestError)
+			return nil, status.Error(reqErr.Code, reqErr.Error())
 		}
 
 		return nil, status.Error(codes.Internal, "Failed to create short URL")
