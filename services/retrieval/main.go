@@ -1,12 +1,13 @@
 package main
 
 import (
+	"context"
 	"os"
 
 	"github.com/Sajantoor/url-shortener/services/common/grpcServer"
 	"github.com/Sajantoor/url-shortener/services/common/protobuf"
 	"github.com/Sajantoor/url-shortener/services/common/store"
-	logger "github.com/Sajantoor/url-shortener/services/common/types"
+	"github.com/Sajantoor/url-shortener/services/common/utils"
 
 	"github.com/Sajantoor/url-shortener/services/retrieval/handler"
 	"github.com/joho/godotenv"
@@ -14,18 +15,20 @@ import (
 )
 
 func main() {
-	logger.InitLogger()
-	godotenv.Load("../common/.env")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
+	utils.InitLogger()
 	zap.L().Info("Starting URL Shortener Retervial Service...")
-
-	store := store.New()
-	defer store.Close()
+	godotenv.Load("../common/.env")
 
 	port := os.Getenv("RETRIEVAL_SERVICE_PORT")
 	if port == "" {
 		panic("RETRIEVAL_SERVICE_PORT is not set")
 	}
+
+	store := store.New(ctx)
+	defer store.Close()
 
 	grpcServer := grpcServer.New(":" + port)
 
@@ -33,5 +36,9 @@ func main() {
 		Store: store,
 	})
 
-	grpcServer.Start()
+	go func() {
+		grpcServer.Start()
+	}()
+
+	utils.HandleShutdown(ctx)
 }

@@ -11,7 +11,7 @@ import (
 
 	"github.com/Sajantoor/url-shortener/services/common/protobuf"
 	"github.com/Sajantoor/url-shortener/services/common/store"
-	"github.com/Sajantoor/url-shortener/services/common/types"
+	types "github.com/Sajantoor/url-shortener/services/common/utils"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	codes "google.golang.org/grpc/codes"
@@ -44,7 +44,7 @@ func (s *CreationHandler) CreateShortUrl(ctx context.Context, req *protobuf.Crea
 
 	shortUrl := generateShortUrl(longUrl)
 
-	res, err := s.Store.CreateUrlMapping(longUrl, shortUrl)
+	res, err := s.Store.CreateUrlMapping(ctx, longUrl, shortUrl)
 
 	if err != nil {
 		if errors.As(err, &types.ReqError) {

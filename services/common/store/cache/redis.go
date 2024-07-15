@@ -1,6 +1,8 @@
 package cache
 
 import (
+	"context"
+
 	"go.uber.org/zap"
 
 	"github.com/go-redis/redis"
@@ -10,7 +12,7 @@ type Redis struct {
 	client *redis.Client
 }
 
-func New() *Redis {
+func New(ctx context.Context) *Redis {
 	zap.L().Info("Creating new Redis client")
 
 	client := redis.NewClient(&redis.Options{
@@ -18,7 +20,7 @@ func New() *Redis {
 		Addr:     "localhost:6379",
 		Password: "",
 		DB:       0,
-	})
+	}).WithContext(ctx)
 
 	_, err := client.Ping().Result()
 
@@ -36,6 +38,6 @@ func (r *Redis) Close() {
 	r.client.Close()
 }
 
-func (r *Redis) GetClient() *redis.Client {
-	return r.client
+func (r *Redis) GetClient(ctx context.Context) *redis.Client {
+	return r.client.WithContext(ctx)
 }

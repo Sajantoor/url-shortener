@@ -3,12 +3,11 @@ package handler
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/url"
 
 	pb "github.com/Sajantoor/url-shortener/services/common/protobuf"
 	"github.com/Sajantoor/url-shortener/services/common/store"
-	"github.com/Sajantoor/url-shortener/services/common/types"
+	types "github.com/Sajantoor/url-shortener/services/common/utils"
 
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -53,9 +52,7 @@ func (s *RetervialHandler) GetLongUrl(ctx context.Context, req *pb.GetLongUrlReq
 
 	shortUrlHash = shortUrlHash[1:]
 
-	fmt.Println(shortUrlHash)
-
-	shortUrlMapping, err := s.Store.GetUrlMapping(shortUrlHash)
+	shortUrlMapping, err := s.Store.GetUrlMapping(ctx, shortUrlHash)
 
 	if err != nil {
 		if errors.As(err, &types.ReqError) {

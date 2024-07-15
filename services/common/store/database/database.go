@@ -19,6 +19,7 @@ func New() *Cassandra {
 	cluster.Keyspace = "url_shortener"
 
 	session, err := cluster.CreateSession()
+
 	if err != nil {
 		zap.L().Sugar().Fatal("Failed to connect to Cassandra", err)
 	}

@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"time"
@@ -9,7 +10,7 @@ import (
 
 	cache "github.com/Sajantoor/url-shortener/services/common/store/cache"
 	db "github.com/Sajantoor/url-shortener/services/common/store/database"
-	"github.com/Sajantoor/url-shortener/services/common/types"
+	types "github.com/Sajantoor/url-shortener/services/common/utils"
 	"github.com/go-redis/redis"
 	gocql "github.com/gocql/gocql"
 )
@@ -19,11 +20,11 @@ type Store struct {
 	cassandra *db.Cassandra
 }
 
-func New() *Store {
+func New(ctx context.Context) *Store {
 	zap.L().Info("Connecting to datastore...")
 
 	return &Store{
-		redis:     cache.New(),
+		redis:     cache.New(ctx),
 		cassandra: db.New(),
 	}
 }
@@ -33,8 +34,8 @@ func (s *Store) Close() {
 	s.cassandra.Close()
 }
 
-func (s *Store) GetUrlMapping(shortUrl string) (*URLMapping, error) {
-	cached, err := s.redis.GetClient().Get(shortUrl).Result()
+func (s *Store) GetUrlMapping(ctx context.Context, shortUrl string) (*URLMapping, error) {
+	cached, err := s.redis.GetClient(ctx).Get(shortUrl).Result()
 
 	switch {
 	case errors.Is(err, redis.Nil):
@@ -58,7 +59,7 @@ func (s *Store) GetUrlMapping(shortUrl string) (*URLMapping, error) {
 
 	db := s.cassandra.Client()
 	result := &URLMapping{}
-	query := db.Query("SELECT * FROM url_shortener.url_map WHERE short_url = ?", shortUrl)
+	query := db.Query("SELECT * FROM url_shortener.url_map WHERE short_url = ?", shortUrl).WithContext(ctx)
 	err = query.Scan(&result.ShortURL, &result.CreatedAt, &result.LongURL)
 
 	switch {
@@ -76,16 +77,16 @@ func (s *Store) GetUrlMapping(shortUrl string) (*URLMapping, error) {
 		return nil, types.InternalServerError(err)
 	}
 
-	s.redis.GetClient().Set(shortUrl, value, 0)
+	s.redis.GetClient(ctx).Set(shortUrl, value, 0)
 	return result, nil
 }
 
-func (s *Store) CreateUrlMapping(longUrl string, shortUrl string) (*URLMapping, error) {
+func (s *Store) CreateUrlMapping(ctx context.Context, longUrl string, shortUrl string) (*URLMapping, error) {
 	db := s.cassandra.Client()
 	createdAt := time.Now()
 
 	// Create long to short mapping first to avoid duplicates
-	query := db.Query("INSERT INTO url_shortener.long_to_short (short_url, long_url) VALUES (?, ?) IF NOT EXISTS", shortUrl, longUrl)
+	query := db.Query("INSERT INTO url_shortener.long_to_short (short_url, long_url) VALUES (?, ?) IF NOT EXISTS", shortUrl, longUrl).WithContext(ctx)
 	applied, err := query.ScanCAS()
 
 	if !applied {
@@ -98,7 +99,7 @@ func (s *Store) CreateUrlMapping(longUrl string, shortUrl string) (*URLMapping, 
 		return nil, types.InternalServerError(err)
 	}
 
-	query = db.Query("INSERT INTO url_shortener.url_map (short_url, long_url, created_at) VALUES (?, ?, ?) IF NOT EXISTS", shortUrl, longUrl, createdAt)
+	query = db.Query("INSERT INTO url_shortener.url_map (short_url, long_url, created_at) VALUES (?, ?, ?) IF NOT EXISTS", shortUrl, longUrl, createdAt).WithContext(ctx)
 	err = query.Exec()
 
 	if err != nil {
