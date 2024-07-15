@@ -9,6 +9,7 @@ import (
 	"github.com/Sajantoor/url-shortener/services/common/store"
 	"github.com/Sajantoor/url-shortener/services/common/utils"
 	"github.com/Sajantoor/url-shortener/services/creation/handler"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
@@ -32,13 +33,18 @@ func main() {
 
 	grpcServer := grpcServer.New(":" + port)
 
+	healthServer := utils.NewHealthServer()
+	healthpb.RegisterHealthServer(grpcServer.GetServer(), healthServer)
+
 	protobuf.RegisterUrlShortnerServiceServer(grpcServer.GetServer(), &handler.CreationHandler{
 		Store: store,
 	})
+
+	healthServer.SetStatus("", healthpb.HealthCheckResponse_SERVING)
 
 	go func() {
 		grpcServer.Start()
 	}()
 
-	utils.HandleShutdown(ctx)
+	utils.HandleShutdown(ctx, healthServer)
 }
