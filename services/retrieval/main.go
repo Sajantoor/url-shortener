@@ -1,19 +1,23 @@
 package main
 
 import (
-	"log"
 	"os"
 
 	"github.com/Sajantoor/url-shortener/services/common/grpcServer"
 	"github.com/Sajantoor/url-shortener/services/common/protobuf"
 	"github.com/Sajantoor/url-shortener/services/common/store"
+	logger "github.com/Sajantoor/url-shortener/services/common/types"
+
 	"github.com/Sajantoor/url-shortener/services/retrieval/handler"
 	"github.com/joho/godotenv"
+	"go.uber.org/zap"
 )
 
 func main() {
+	logger.InitLogger()
 	godotenv.Load("../common/.env")
-	log.Println("Starting URL Shortener Retervial Service...")
+
+	zap.L().Info("Starting URL Shortener Retervial Service...")
 
 	store := store.New()
 	defer store.Close()

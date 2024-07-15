@@ -1,9 +1,8 @@
 package database
 
 import (
-	"log"
-
 	"github.com/gocql/gocql"
+	"go.uber.org/zap"
 )
 
 type Cassandra struct {
@@ -12,7 +11,7 @@ type Cassandra struct {
 }
 
 func New() *Cassandra {
-	log.Println("Connecting to Cassandra...")
+	zap.L().Info("Connecting to Cassandra...")
 
 	cluster := gocql.NewCluster("127.0.0.1")
 	cluster.ProtoVersion = 4
@@ -21,10 +20,10 @@ func New() *Cassandra {
 
 	session, err := cluster.CreateSession()
 	if err != nil {
-		log.Fatal("Failed to connect to Cassandra", err)
+		zap.L().Sugar().Fatal("Failed to connect to Cassandra", err)
 	}
 
-	log.Println("Connected to Cassandra")
+	zap.L().Info("Connected to Cassandra")
 
 	return &Cassandra{
 		cluster: cluster,

@@ -1,7 +1,7 @@
 package cache
 
 import (
-	"log"
+	"go.uber.org/zap"
 
 	"github.com/go-redis/redis"
 )
@@ -11,7 +11,7 @@ type Redis struct {
 }
 
 func New() *Redis {
-	log.Println("Creating new Redis client")
+	zap.L().Info("Creating new Redis client")
 
 	client := redis.NewClient(&redis.Options{
 		// TODO: Add additional configuration here
@@ -23,10 +23,10 @@ func New() *Redis {
 	_, err := client.Ping().Result()
 
 	if err != nil {
-		log.Fatal("Failed to connect to Redis", err)
+		zap.L().Sugar().Fatalf("Failed to connect to Redis", err)
 	}
 
-	log.Println("Connected to Redis")
+	zap.L().Info("Connected to Redis")
 	return &Redis{
 		client: client,
 	}

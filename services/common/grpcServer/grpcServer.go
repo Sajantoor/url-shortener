@@ -1,8 +1,9 @@
 package grpcServer
 
 import (
-	"log"
 	"net"
+
+	"go.uber.org/zap"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -17,7 +18,7 @@ func New(address string) *GrpcServer {
 	listener, err := net.Listen("tcp", ":8080")
 
 	if err != nil {
-		log.Fatalln("Failed to create TCP listener:", err)
+		zap.L().Fatal("Failed to create TCP listener:" + err.Error())
 	}
 
 	grpcServer := grpc.NewServer()
@@ -33,10 +34,10 @@ func (s *GrpcServer) Start() {
 	err := s.grpcServer.Serve(*s.listener)
 
 	if err != nil {
-		log.Fatalln("Failed to start gRPC server:", err)
+		zap.L().Fatal("Failed to start gRPC server:" + err.Error())
 	}
 
-	log.Print("gRPC server started successfully")
+	zap.L().Sugar().Info("gRPC server started successfully")
 }
 
 func (s *GrpcServer) GetServer() *grpc.Server {

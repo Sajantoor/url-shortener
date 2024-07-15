@@ -3,8 +3,9 @@ package store
 import (
 	"encoding/json"
 	"errors"
-	"log"
 	"time"
+
+	"go.uber.org/zap"
 
 	cache "github.com/Sajantoor/url-shortener/services/common/store/cache"
 	db "github.com/Sajantoor/url-shortener/services/common/store/database"
@@ -19,7 +20,7 @@ type Store struct {
 }
 
 func New() *Store {
-	log.Println("Connecting to datastore...")
+	zap.L().Info("Connecting to datastore...")
 
 	return &Store{
 		redis:     cache.New(),
@@ -39,16 +40,16 @@ func (s *Store) GetUrlMapping(shortUrl string) (*URLMapping, error) {
 	case errors.Is(err, redis.Nil):
 		// key doesn't exist, continue to fetch from database
 	case err != nil:
-		log.Println("Error getting value from cache: ", err)
+		zap.L().Sugar().Infof("Error getting value from cache: ", err)
 		return nil, types.InternalServerError(err)
 	case cached == "":
-		log.Println("Empty value found in cache")
+		zap.L().Sugar().Info("Empty value found in cache")
 	case true: // value found in cache
 		cachedValue := &URLMapping{}
 		err := json.Unmarshal([]byte(cached), cachedValue)
 
 		if err != nil {
-			log.Fatal("Failed to unmarshal cached value ", err)
+			zap.L().Sugar().Error("Failed to unmarshal cached value ", err)
 			return nil, types.InternalServerError(err)
 		}
 
@@ -64,14 +65,14 @@ func (s *Store) GetUrlMapping(shortUrl string) (*URLMapping, error) {
 	case errors.Is(err, gocql.ErrNotFound):
 		return nil, types.NotFoundError(err)
 	case err != nil:
-		log.Println("Failed to get result from Cassandra: ", err)
+		zap.L().Sugar().Error("Failed to get result from Cassandra: ", err)
 		return nil, types.InternalServerError(err)
 	}
 
 	// set value in cache
 	value, err := json.Marshal(result)
 	if err != nil {
-		log.Println("Failed to marshal value", err)
+		zap.L().Sugar().Error("Failed to marshal value", err)
 		return nil, types.InternalServerError(err)
 	}
 
@@ -88,12 +89,12 @@ func (s *Store) CreateUrlMapping(longUrl string, shortUrl string) (*URLMapping, 
 	applied, err := query.ScanCAS()
 
 	if !applied {
-		log.Println("Long URL already exists: ", longUrl)
+		zap.L().Sugar().Info("Long URL already exists: ", longUrl)
 		return nil, types.AlreadyExistsError(errors.New("long URL already exists"))
 	}
 
 	if err != nil {
-		log.Println("Failed to insert into Cassandra long_to_short mapping: ", err)
+		zap.L().Sugar().Error("Failed to insert into Cassandra long_to_short mapping: ", err)
 		return nil, types.InternalServerError(err)
 	}
 
@@ -101,7 +102,7 @@ func (s *Store) CreateUrlMapping(longUrl string, shortUrl string) (*URLMapping, 
 	err = query.Exec()
 
 	if err != nil {
-		log.Println("Failed to insert into Cassandra: ", err)
+		zap.L().Sugar().Error("Failed to insert into Cassandra: ", err)
 		return nil, types.InternalServerError(err)
 	}
 
