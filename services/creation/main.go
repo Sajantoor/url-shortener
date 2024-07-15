@@ -8,9 +8,11 @@ import (
 	"github.com/Sajantoor/url-shortener/services/common/protobuf"
 	"github.com/Sajantoor/url-shortener/services/common/store"
 	"github.com/Sajantoor/url-shortener/services/creation/handler"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	godotenv.Load("../common/.env")
 	log.Println("Starting URL Shortener Creation Service...")
 
 	store := store.New()
