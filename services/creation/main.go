@@ -20,13 +20,15 @@ func main() {
 	defer cancel()
 
 	utils.InitLogger()
+	godotenv.Load()
+
 	zap.L().Info("Starting URL Shortener Creation Service...")
-	godotenv.Load("../common/.env")
 
 	port := os.Getenv("CREATION_SERVICE_PORT")
 	if port == "" {
 		panic("CREATION_SERVICE_PORT is not set")
 	}
+	zap.L().Info("Starting application on port: " + port)
 
 	store := store.New(ctx)
 	defer store.Close()

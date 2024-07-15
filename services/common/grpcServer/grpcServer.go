@@ -14,8 +14,8 @@ type GrpcServer struct {
 	grpcServer *grpc.Server
 }
 
-func New(address string) *GrpcServer {
-	listener, err := net.Listen("tcp", ":8080")
+func New(port string) *GrpcServer {
+	listener, err := net.Listen("tcp", port)
 
 	if err != nil {
 		zap.L().Fatal("Failed to create TCP listener:" + err.Error())

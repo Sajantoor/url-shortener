@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/url"
+	"os"
 
 	pb "github.com/Sajantoor/url-shortener/services/common/protobuf"
 	"github.com/Sajantoor/url-shortener/services/common/store"
@@ -19,7 +20,7 @@ type RetervialHandler struct {
 	pb.UnimplementedUrlRetrievalServer
 }
 
-var domain = "http://localhost:8080"
+var domain = os.Getenv("DOMAIN")
 var domainHostname string = ""
 
 func (s *RetervialHandler) GetLongUrl(ctx context.Context, req *pb.GetLongUrlRequest) (*pb.GetLongUrlResponse, error) {
